@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Sound</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    /* ── BIG RED BUTTON ── */
+    #play-btn {
+      width: min(72vw, 72vh, 320px);
+      height: min(72vw, 72vh, 320px);
+      border-radius: 50%;
+      border: none;
+      background: radial-gradient(circle at 35% 35%, #ff4444, #c0000a);
+      box-shadow:
+        0 0 0 6px #1a0000,
+        0 0 40px 8px rgba(200, 0, 10, 0.45),
+        inset 0 -6px 20px rgba(0,0,0,0.4);
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+      -webkit-appearance: none;
+      outline: none;
+    }
+
+    #play-btn:active,
+    #play-btn.pressed {
+      transform: scale(0.93);
+      box-shadow:
+        0 0 0 6px #1a0000,
+        0 0 20px 4px rgba(200, 0, 10, 0.3),
+        inset 0 6px 20px rgba(0,0,0,0.5);
+    }
+
+    /* ── SMALL SELECT BUTTON ── */
+    #pick-btn {
+      padding: 12px 28px;
+      border-radius: 999px;
+      border: 1.5px solid #333;
+      background: transparent;
+      color: #555;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      font-family: system-ui, -apple-system, sans-serif;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    #pick-btn:active { border-color: #666; color: #999; }
+
+    /* ── MODAL ── */
+    #modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 10;
+    }
+    #modal.open { display: flex; }
+
+    #modal-sheet {
+      width: 100%;
+      max-width: 480px;
+      background: #141414;
+      border-radius: 20px 20px 0 0;
+      padding: 12px 0 32px;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    #modal-handle {
+      width: 40px; height: 4px;
+      border-radius: 2px;
+      background: #333;
+      margin: 0 auto 16px;
+    }
+
+    .sound-item {
+      display: flex;
+      align-items: center;
+      padding: 14px 24px;
+      gap: 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .sound-item:active { background: #1e1e1e; }
+
+    .sound-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #333;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .sound-item.active .sound-dot { background: #c0000a; }
+
+    .sound-name {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 16px;
+      color: #888;
+      transition: color 0.2s;
+    }
+    .sound-item.active .sound-name { color: #fff; }
+
+    #no-sounds {
+      padding: 24px;
+      text-align: center;
+      color: #444;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <button id="play-btn" aria-label="Play sound"></button>
+  <button id="pick-btn">выбрать звук</button>
+
+  <div id="modal" role="dialog" aria-modal="true">
+    <div id="modal-sheet">
+      <div id="modal-handle"></div>
+      <div id="sound-list"></div>
+    </div>
+  </div>
+
+  <script>
+    // ─────────────────────────────────────────────
+    // ЗВУКИ — добавляй свои файлы в папку /sounds/
+    // и прописывай их здесь:
+    //
+    //   { name: "Название", file: "sounds/файл.mp3" }
+    //
+    const SOUNDS = [
+      { name: "Гудок",        file: "sounds/horn.mp3" },
+      { name: "Аплодисменты", file: "sounds/applause.mp3" },
+      { name: "Свисток",      file: "sounds/whistle.mp3" },
+    ];
+    // ─────────────────────────────────────────────
+
+    let currentIndex = 0;
+    let audio = null;
+
+    const playBtn   = document.getElementById("play-btn");
+    const pickBtn   = document.getElementById("pick-btn");
+    const modal     = document.getElementById("modal");
+    const soundList = document.getElementById("sound-list");
+
+    function loadSound(index) {
+      if (!SOUNDS.length) return;
+      if (audio) { audio.pause(); audio = null; }
+      audio = new Audio(SOUNDS[index].file);
+      audio.load();
+    }
+
+    function playSound() {
+      if (!SOUNDS.length || !audio) return;
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+    }
+
+    function buildList() {
+      soundList.innerHTML = "";
+
+      if (!SOUNDS.length) {
+        soundList.innerHTML = `<div id="no-sounds">Нет звуков.<br>Добавь файлы в папку <code>sounds/</code><br>и пропиши их в <code>index.html</code>.</div>`;
+        return;
+      }
+
+      SOUNDS.forEach((s, i) => {
+        const item = document.createElement("div");
+        item.className = "sound-item" + (i === currentIndex ? " active" : "");
+        item.innerHTML = `<div class="sound-dot"></div><div class="sound-name">${s.name}</div>`;
+        item.addEventListener("click", () => {
+          currentIndex = i;
+          loadSound(i);
+          closeModal();
+        });
+        soundList.appendChild(item);
+      });
+    }
+
+    function openModal()  { buildList(); modal.classList.add("open"); }
+    function closeModal() { modal.classList.remove("open"); }
+
+    playBtn.addEventListener("pointerdown", () => playBtn.classList.add("pressed"));
+    playBtn.addEventListener("pointerup",   () => { playBtn.classList.remove("pressed"); playSound(); });
+    playBtn.addEventListener("pointercancel", () => playBtn.classList.remove("pressed"));
+
+    pickBtn.addEventListener("click", openModal);
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+    // init
+    if (SOUNDS.length) loadSound(currentIndex);
+  </script>
+</body>
+</html>
