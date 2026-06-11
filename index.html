@@ -127,6 +127,29 @@
       font-size: 14px;
       line-height: 1.6;
     }
+
+    .preview-btn {
+      margin-left: auto;
+      flex-shrink: 0;
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      border: 1.5px solid #2a2a2a;
+      background: transparent;
+      color: #444;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      -webkit-appearance: none;
+      outline: none;
+    }
+    .preview-btn:active { background: #1e1e1e; }
+    .preview-btn.playing {
+      border-color: #c0000a;
+      color: #ff4444;
+    }
+    .preview-btn svg { display: block; }
   </style>
 </head>
 <body>
@@ -149,19 +172,32 @@
     //   { name: "Название", file: "sounds/файл.mp3" }
     //
     const SOUNDS = [
-      { name: "Гудок",        file: "sounds/perfect-fart.mp3" },
-      { name: "Аплодисменты", file: "sounds/error_CDOxCYm.mp3" },
-      { name: "Свисток",      file: "sounds/whistle.mp3" },
+      { name: "Nынь-дынь",        file: "sounds/тынь-дынь.mp3" },
+      { name: "Дзынь", file: "sounds/дзынь.mp3" },
+      { name: "Трынь",      file: "sounds/трынь.mp3" },
+       { name: "Трынь",      file: "sounds/трынь.mp3" },
+       { name: "Трынь",      file: "sounds/трынь.mp3" },
+       { name: "Трынь",      file: "sounds/трынь.mp3" },
+       { name: "Трынь",      file: "sounds/трынь.mp3" },
+       { name: "Трынь",      file: "sounds/трынь.mp3" },
+       { name: "Трынь",      file: "sounds/трынь.mp3" },
+       { name: "Трынь",      file: "sounds/трынь.mp3" },
+       { name: "Трынь",      file: "sounds/трынь.mp3" },
     ];
     // ─────────────────────────────────────────────
 
     let currentIndex = 0;
     let audio = null;
+    let previewAudio = null;
+    let previewBtn = null;
 
     const playBtn   = document.getElementById("play-btn");
     const pickBtn   = document.getElementById("pick-btn");
     const modal     = document.getElementById("modal");
     const soundList = document.getElementById("sound-list");
+
+    const ICON_PLAY = `<svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor"><path d="M1 1.5v11l10-5.5z"/></svg>`;
+    const ICON_STOP = `<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect width="12" height="12" rx="2"/></svg>`;
 
     function loadSound(index) {
       if (!SOUNDS.length) return;
@@ -176,7 +212,24 @@
       audio.play().catch(() => {});
     }
 
+    function stopPreview() {
+      if (previewAudio) { previewAudio.pause(); previewAudio = null; }
+      if (previewBtn)   { previewBtn.classList.remove("playing"); previewBtn.innerHTML = ICON_PLAY; previewBtn = null; }
+    }
+
+    function togglePreview(index, btn) {
+      if (previewBtn === btn) { stopPreview(); return; }
+      stopPreview();
+      previewAudio = new Audio(SOUNDS[index].file);
+      previewBtn = btn;
+      btn.classList.add("playing");
+      btn.innerHTML = ICON_STOP;
+      previewAudio.play().catch(() => {});
+      previewAudio.addEventListener("ended", stopPreview);
+    }
+
     function buildList() {
+      stopPreview();
       soundList.innerHTML = "";
 
       if (!SOUNDS.length) {
@@ -187,18 +240,39 @@
       SOUNDS.forEach((s, i) => {
         const item = document.createElement("div");
         item.className = "sound-item" + (i === currentIndex ? " active" : "");
-        item.innerHTML = `<div class="sound-dot"></div><div class="sound-name">${s.name}</div>`;
+
+        const dot  = document.createElement("div");
+        dot.className = "sound-dot";
+
+        const name = document.createElement("div");
+        name.className = "sound-name";
+        name.textContent = s.name;
+
+        const btn = document.createElement("button");
+        btn.className = "preview-btn";
+        btn.innerHTML = ICON_PLAY;
+        btn.setAttribute("aria-label", "Preview " + s.name);
+
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          togglePreview(i, btn);
+        });
+
+        item.append(dot, name, btn);
+
         item.addEventListener("click", () => {
+          stopPreview();
           currentIndex = i;
           loadSound(i);
           closeModal();
         });
+
         soundList.appendChild(item);
       });
     }
 
     function openModal()  { buildList(); modal.classList.add("open"); }
-    function closeModal() { modal.classList.remove("open"); }
+    function closeModal() { stopPreview(); modal.classList.remove("open"); }
 
     playBtn.addEventListener("pointerdown", () => playBtn.classList.add("pressed"));
     playBtn.addEventListener("pointerup",   () => { playBtn.classList.remove("pressed"); playSound(); });
